@@ -4,32 +4,34 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateSeancesTable extends Migration
 {
     /**
-     * Запуск миграции.
+     * Run the migrations.
      *
      * @return void
      */
     public function up()
     {
-        Schema::create('sessions', function (Blueprint $table) {
+        Schema::create('seances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('hall_id')->constrained('cinema_halls')->onDelete('cascade');
+            $table->foreignId('cinema_hall_id')->constrained('cinema_halls')->onDelete('cascade');
             $table->foreignId('movie_id')->constrained()->onDelete('cascade');
             $table->dateTime('start_time');
             $table->dateTime('end_time');
-            // Добавьте другие поля по необходимости
+            $table->decimal('price_regular', 8, 2);
+            $table->decimal('price_vip', 8, 2);
             $table->timestamps();
         });
     }
+
     /**
-     * Откат миграции.
+     * Reverse the migrations.
      *
      * @return void
      */
     public function down()
     {
-        Schema::dropIfExists('movie_sessions');
+        Schema::dropIfExists('seances');
     }
-};
+}

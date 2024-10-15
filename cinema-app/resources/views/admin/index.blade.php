@@ -54,7 +54,7 @@
                             <div class="card-body text-center">
                                 <h5 class="card-title">Сеансы Фильмов</h5>
                                 <p class="card-text">Создание и управление сеансами фильмов.</p>
-                                <a href="{{ route('admin.sessions.index') }}" class="btn btn-light">Перейти</a>
+                                <a href="{{ route('admin.seances.index') }}" class="btn btn-light">Перейти</a>
                             </div>
                         </div>
                     </div>

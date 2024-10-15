@@ -18,10 +18,16 @@ class Movie extends Model
         'poster_url',
     ];
 
-    // Связь многие ко многим с сеансами через таблицу movie_session_movie
-    public function sessions()
+    /**
+     * Связь с сеансами.
+     */
+    public function movieSessions()
     {
-        return $this->belongsToMany(MovieSession::class, 'movie_session_movie', 'movie_id', 'session_id');
+        return $this->hasMany(MovieSession::class);
     }
+    public function seances()
+{
+    return $this->hasMany(Seance::class);
 }
 
+}

@@ -29,8 +29,8 @@
                             <td>{{ $session->start_time->format('d.m.Y H:i') }}</td>
                             <td>{{ $session->end_time->format('d.m.Y H:i') }}</td>
                             <td>
-                                <a href="{{ route('admin.sessions.edit', $session->id) }}" class="btn btn-sm btn-primary">Редактировать</a>
-                                <form action="{{ route('admin.sessions.destroy', $session->id) }}" method="POST" style="display:inline;">
+                                <a href="{{ route('admin.seances.edit', $session->id) }}" class="btn btn-sm btn-primary">Редактировать</a>
+                                <form action="{{ route('admin.seances.destroy', $session->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены, что хотите удалить этот сеанс?')">Удалить</button>

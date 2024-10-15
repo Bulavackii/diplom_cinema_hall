@@ -2,28 +2,107 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Seance;
 use App\Models\Movie;
 use App\Models\CinemaHall;
-use App\Models\MovieSession;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use App\Models\User;
 
 class AdminController extends Controller
 {
+    // Главная страница админки
     public function index()
-{
-    $cinemaHalls = CinemaHall::all();
-    $movies = Movie::all();
-    $sessions = MovieSession::with('movies', 'cinemaHall')->get();
+    {
+        // Получаем все сеансы с подгруженными данными о фильмах и залах
+        $seances = Seance::with('movie', 'cinemaHall')->get();
+        
+        // Получаем количество администраторов и зрителей
+        $adminsCount = User::where('role', 'admin')->count();
+        $guestsCount = User::where('role', 'guest')->count();
 
-    // Подсчитываем количество администраторов и зрителей
-    $adminsCount = User::where('role', 'admin')->count();
-    $guestsCount = User::where('role', 'guest')->count();
+        return view('admin.index', compact('seances', 'adminsCount', 'guestsCount'));
+    }
 
-    return view('admin.index', compact('cinemaHalls', 'movies', 'sessions', 'adminsCount', 'guestsCount'));
-}
+    // Управление фильмами
+    public function movies()
+    {
+        $movies = Movie::all();
+        return view('admin.movies.index', compact('movies'));
+    }
 
+    public function addMovieForm()
+    {
+        return view('admin.movies.create');
+    }
+
+    // Метод для сохранения нового фильма
+    public function storeMovie(Request $request)
+    {
+        // Валидация данных
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'country' => 'required|string|max:255',
+            'genre' => 'required|string|max:255',
+            'duration' => 'required|integer|min:1',
+            'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Проверка изображения
+        ]);
+
+        // Создаем фильм
+        $movie = new Movie($validated);
+
+        // Проверка и сохранение постера
+        if ($request->hasFile('poster')) {
+            $posterPath = $request->file('poster')->move(public_path('client/i'), $request->file('poster')->getClientOriginalName());
+            $movie->poster_url = 'client/i/' . $request->file('poster')->getClientOriginalName();
+        }
+
+        $movie->save();
+
+        return redirect()->route('admin.movies.index')->with('success', 'Фильм успешно добавлен!');
+    }
+
+    // Метод для обновления существующего фильма
+    public function updateMovie(Request $request, Movie $movie)
+    {
+        // Валидация данных
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'country' => 'required|string|max:255',
+            'genre' => 'required|string|max:255',
+            'duration' => 'required|integer|min:1',
+            'poster' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Проверка изображения
+            'delete_poster' => 'nullable|boolean'
+        ]);
+
+        // Обновление данных фильма
+        $movie->fill($validated);
+
+        // Если нужно удалить текущий постер
+        if ($request->has('delete_poster') && $request->delete_poster) {
+            if (file_exists(public_path($movie->poster_url))) {
+                unlink(public_path($movie->poster_url));
+            }
+            $movie->poster_url = null;
+        }
+
+        // Проверка и обновление постера
+        if ($request->hasFile('poster')) {
+            if ($movie->poster_url && file_exists(public_path($movie->poster_url))) {
+                unlink(public_path($movie->poster_url));
+            }
+            $posterPath = $request->file('poster')->move(public_path('client/i'), $request->file('poster')->getClientOriginalName());
+            $movie->poster_url = 'client/i/' . $request->file('poster')->getClientOriginalName();
+        }
+
+        $movie->save();
+
+        return redirect()->route('admin.movies.index')->with('success', 'Фильм успешно обновлен!');
+    }
+
+    // Управление пользователями
     public function users()
     {
         $admins = User::where('role', 'admin')->get();
@@ -32,129 +111,119 @@ class AdminController extends Controller
         return view('admin.users', compact('admins', 'guests'));
     }
 
-
-    public function sessions()
+    // Управление залами
+    public function halls()
     {
-        $sessions = MovieSession::with('movies', 'cinemaHall')->get();
-        return view('admin.sessions.index', compact('sessions'));
-    }
-
-    public function createSessionForm()
-    {
-        $movies = Movie::all();
         $cinemaHalls = CinemaHall::all();
-        return view('admin.sessions.create', compact('movies', 'cinemaHalls'));
+        return view('admin.halls.index', compact('cinemaHalls'));
     }
 
-    public function storeSession(Request $request)
-{
-    $validated = $request->validate([
-        'cinema_hall_id' => 'required|exists:cinema_halls,id',
-        'start_time'     => 'required|date_format:Y-m-d\TH:i',
-        'end_time'       => 'required|date_format:Y-m-d\TH:i|after:start_time',
-        'movie_ids'      => 'required|array',
-        'movie_ids.*'    => 'exists:movies,id',
-    ]);
-
-    $validated['start_time'] = Carbon::parse($validated['start_time']);
-    $validated['end_time'] = Carbon::parse($validated['end_time']);
-
-    // Создаем сеанс
-    $session = MovieSession::create([
-        'cinema_hall_id' => $validated['cinema_hall_id'],
-        'start_time' => $validated['start_time'],
-        'end_time' => $validated['end_time'],
-    ]);
-
-    // Привязываем фильмы к сеансу через промежуточную таблицу
-    $session->movies()->sync($validated['movie_ids']); // Привязка фильмов
-
-    return redirect()->route('admin.sessions.index')->with('status', 'Сеанс успешно добавлен.');
-}
-
-
-
-    public function editSessionForm($id)
+    public function editHallForm(CinemaHall $hall)
     {
-        $session = MovieSession::findOrFail($id);
-        $movies = Movie::all();
-        $cinemaHalls = CinemaHall::all();
-        return view('admin.sessions.edit', compact('session', 'movies', 'cinemaHalls'));
+        return view('admin.halls.edit', compact('hall'));
     }
 
-    public function updateSession(Request $request, $id)
+    public function deactivateHall(CinemaHall $hall)
     {
-        $validated = $request->validate([
-            'cinema_hall_id' => 'required|exists:cinema_halls,id',
-            'start_time'     => 'required|date_format:Y-m-d\TH:i',
-            'end_time'       => 'required|date_format:Y-m-d\TH:i|after:start_time',
-            'movie_ids'      => 'required|array',
-            'movie_ids.*'    => 'exists:movies,id',
-        ]);
+        $hall->active = false; // Предполагается, что есть поле "active" в таблице залов
+        $hall->save();
 
-        $session = MovieSession::findOrFail($id);
-
-        $session->update([
-            'cinema_hall_id' => $request->cinema_hall_id,
-            'start_time'     => Carbon::parse($request->start_time),
-            'end_time'       => Carbon::parse($request->end_time),
-        ]);
-
-        $session->movies()->sync($request->movie_ids);
-
-        return redirect()->route('admin.sessions.index')->with('status', 'Сеанс успешно обновлен');
+        return redirect()->route('admin.halls.index')->with('status', 'Зал успешно деактивирован');
     }
 
-    public function deleteSession($id)
+    public function activateHall(CinemaHall $hall)
     {
-        $session = MovieSession::findOrFail($id);
-        $session->movies()->detach();
-        $session->delete();
+        $hall->active = true; // Предполагается, что есть поле "active" в таблице залов
+        $hall->save();
 
-        return redirect()->route('admin.sessions.index')->with('status', 'Сеанс успешно удален');
+        return redirect()->route('admin.halls.index')->with('status', 'Зал успешно активирован');
     }
 
+    // Управление ценами (методы должны быть реализованы)
+    public function prices()
+    {
+        // Реализуйте логику для управления ценами
+        return view('admin.prices.index');
+    }
+
+    public function createPriceForm()
+    {
+        // Реализуйте логику для создания цены
+        return view('admin.prices.create');
+    }
+
+    public function storePrice(Request $request)
+    {
+        // Реализуйте логику для сохранения цены
+    }
+
+    public function editPriceForm($price)
+    {
+        // Реализуйте логику для редактирования цены
+    }
+
+    public function updatePrice(Request $request, $price)
+    {
+        // Реализуйте логику для обновления цены
+    }
+
+    public function deletePrice($price)
+    {
+        // Реализуйте логику для удаления цены
+    }
+
+    // Dashboard
     public function adminDashboard()
+    {
+        $admins = User::where('role', 'admin')->get(); // Предполагаем, что в модели User есть поле role
+        $guests = User::where('role', 'guest')->get();
+
+        return view('admin.index', compact('admins', 'guests'));
+    }
+
+    public function createHallForm()
+    {
+        // Если используете модель CinemaHall, можно передать необходимые данные в представление
+        // Например: $halls = CinemaHall::all();
+        return view('admin.halls.create');
+    }
+
+    /**
+     * Обрабатывает сохранение нового зала.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeHall(Request $request)
+    {
+        // Валидация входных данных
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'rows' => 'required|integer|min:1',
+            'seats_per_row' => 'required|integer|min:1',
+        ]);
+
+        // Создание нового зала
+        CinemaHall::create($validated);
+
+        // Перенаправление с сообщением об успехе
+        return redirect()->route('admin.halls.index')->with('success', 'Зал успешно создан!');
+    }
+
+    public function updateHall(Request $request, CinemaHall $hall)
 {
-    $admins = User::where('role', 'admin')->get(); // Предполагаем, что в модели User есть поле role
-    $guests = User::where('role', 'guest')->get();
+    // Валидация данных
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'rows' => 'required|integer|min:1',
+        'seats_per_row' => 'required|integer|min:1',
+    ]);
 
-    return view('admin.index', compact('admins', 'guests'));
-}
+    // Обновление данных о зале
+    $hall->update($validated);
 
-public function halls()
-{
-    $cinemaHalls = CinemaHall::all();
-    return view('admin.halls.index', compact('cinemaHalls'));
-}
-
-public function editHallForm($id)
-{
-    $hall = CinemaHall::findOrFail($id);
-    return view('admin.halls.edit', compact('hall'));
-}
-
-public function movies()
-{
-    $movies = Movie::all();
-    return view('admin.movies.index', compact('movies'));
-}
-public function deactivateHall($id)
-{
-    $hall = CinemaHall::findOrFail($id);
-    $hall->active = false; // Предполагается, что есть поле "active" в таблице залов
-    $hall->save();
-
-    return redirect()->route('admin.halls.index')->with('status', 'Зал успешно деактивирован');
-}
-
-public function activateHall($id)
-{
-    $hall = CinemaHall::findOrFail($id);
-    $hall->active = true; // Предполагается, что есть поле "active" в таблице залов
-    $hall->save();
-
-    return redirect()->route('admin.halls.index')->with('status', 'Зал успешно активирован');
+    // Перенаправление с сообщением об успешном обновлении
+    return redirect()->route('admin.halls.index')->with('success', 'Зал успешно обновлен.');
 }
 
 }

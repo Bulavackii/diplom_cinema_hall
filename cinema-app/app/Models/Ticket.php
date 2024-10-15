@@ -1,5 +1,3 @@
-<!-- Ticket.php -->
-
 <?php
 
 namespace App\Models;
@@ -16,13 +14,13 @@ class Ticket extends Model
     /**
      * Билет принадлежит сеансу.
      */
-    public function session()
+    public function seance()
     {
-        return $this->belongsTo(MovieSession::class);
+        return $this->belongsTo(Seance::class);
     }
 
     /**
-     * Билет связан с местом.
+     * Билет принадлежит месту.
      */
     public function seat()
     {

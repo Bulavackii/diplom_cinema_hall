@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
 @section('content')
-    <div class="container mt-4">
-        <h2 class="mb-4">Редактировать фильм</h2>
+    <div class="container mt-5">
+        <h2>Редактировать фильм</h2>
 
         @if (session('status'))
             <div class="alert alert-success">
@@ -67,6 +67,7 @@
             <div class="mb-3">
                 <label for="poster" class="form-label">Постер фильма:</label>
                 <input type="file" class="form-control @error('poster') is-invalid @enderror" name="poster" id="poster" accept="image/*">
+                
                 @if ($movie->poster_url)
                     <div class="mt-2">
                         <img src="{{ asset($movie->poster_url) }}" alt="Текущий постер" style="width: 150px; height: auto;">
@@ -84,7 +85,6 @@
             </div>
 
             <button type="submit" class="btn btn-primary">Сохранить изменения</button>
-            <a href="{{ route('admin.movies.index') }}" class="btn btn-secondary ms-2">Назад к списку фильмов</a>
         </form>
     </div>
 @endsection

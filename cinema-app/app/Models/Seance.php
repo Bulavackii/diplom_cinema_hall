@@ -5,15 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class MovieSession extends Model
+class Seance extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'cinema_hall_id',
+        'movie_id',
         'start_time',
         'end_time',
-        'movie_id', // Добавлено для связи с фильмом
+        'price_regular',
+        'price_vip',
     ];
 
     protected $casts = [
@@ -21,33 +23,49 @@ class MovieSession extends Model
         'end_time' => 'datetime',
     ];
 
-    // Связь с одним фильмом (каждый сеанс связан с одним фильмом)
-    public function movies()
-{
-    return $this->belongsToMany(Movie::class, 'movie_session_movie', 'session_id', 'movie_id');
-}
+    /**
+     * Связь с фильмом.
+     */
+    public function movie()
+    {
+        return $this->belongsTo(Movie::class);
+    }
 
-
-
-    // Связь с залом
+    /**
+     * Связь с кинозалом.
+     */
     public function cinemaHall()
     {
         return $this->belongsTo(CinemaHall::class);
     }
 
-    // Форматирование времени начала
+    /**
+     * Связь с билетами.
+     */
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
+    }
+
+    /**
+     * Форматирование времени начала.
+     */
     public function getFormattedStartTimeAttribute()
     {
         return $this->start_time ? $this->start_time->format('d.m.Y H:i') : null;
     }
 
-    // Форматирование времени окончания
+    /**
+     * Форматирование времени окончания.
+     */
     public function getFormattedEndTimeAttribute()
     {
         return $this->end_time ? $this->end_time->format('d.m.Y H:i') : null;
     }
 
-    // Проверка, доступен ли сеанс для бронирования (время окончания больше текущего времени)
+    /**
+     * Проверка доступности сеанса для бронирования.
+     */
     public function isAvailable()
     {
         return $this->end_time > now();

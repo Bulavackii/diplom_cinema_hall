@@ -3,82 +3,88 @@
 namespace App\Http\Controllers;
 
 use App\Models\Movie;
-use App\Models\MovieSession;
-use App\Models\CinemaHall;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
 
 class MovieController extends Controller
 {
     public function index()
     {
-        $sessions = MovieSession::with('movies', 'cinemaHall')->get();
-        return view('admin.sessions.index', compact('sessions'));
+        $movies = Movie::all();
+        return view('admin.movies.index', compact('movies'));
     }
 
     public function create()
     {
-        $movies = Movie::all();
-        $cinemaHalls = CinemaHall::all();
-        return view('admin.sessions.create', compact('movies', 'cinemaHalls'));
+        return view('admin.movies.create');
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'cinema_hall_id' => 'required|integer|exists:cinema_halls,id',
-            'start_time' => 'required|date_format:Y-m-d\TH:i',
-            'end_time' => 'required|date_format:Y-m-d\TH:i|after:start_time',
-            'movie_ids' => 'required|array',
-            'movie_ids.*' => 'exists:movies,id',
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'country' => 'required|string|max:255',
+            'genre' => 'required|string|max:255',
+            'duration' => 'required|integer|min:1',
+            'poster' => 'nullable|image|max:2048', // Валидируем файл
         ]);
 
-        $session = MovieSession::create([
-            'cinema_hall_id' => $request->cinema_hall_id,
-            'start_time' => Carbon::createFromFormat('Y-m-d\TH:i', $request->start_time),
-            'end_time' => Carbon::createFromFormat('Y-m-d\TH:i', $request->end_time),
-        ]);
+        $movie = new Movie($validated);
 
-        // Привязка фильмов к сеансу
-        $session->movies()->sync($request->movie_ids);
+        if ($request->hasFile('poster')) {
+            // Загрузка постера
+            $posterPath = $request->file('poster')->move(public_path('client/i'), $request->file('poster')->getClientOriginalName());
+            $movie->poster_url = 'client/i/' . $request->file('poster')->getClientOriginalName();
+        }
 
-        return redirect()->route('admin.sessions.index')->with('status', 'Сеанс успешно добавлен.');
+        $movie->save();
+
+        return redirect()->route('admin.movies.index')->with('success', 'Фильм успешно добавлен.');
     }
 
-    public function edit(MovieSession $session)
+    public function edit(Movie $movie)
     {
-        $movies = Movie::all();
-        $cinemaHalls = CinemaHall::all();
-        return view('admin.sessions.edit', compact('session', 'movies', 'cinemaHalls'));
+        return view('admin.movies.edit', compact('movie'));
     }
 
-    public function update(Request $request, MovieSession $session)
+    public function update(Request $request, Movie $movie)
     {
-        $request->validate([
-            'cinema_hall_id' => 'required|integer|exists:cinema_halls,id',
-            'start_time' => 'required|date_format:Y-m-d\TH:i',
-            'end_time' => 'required|date_format:Y-m-d\TH:i|after:start_time',
-            'movie_ids' => 'required|array',
-            'movie_ids.*' => 'exists:movies,id',
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'country' => 'required|string|max:255',
+            'genre' => 'required|string|max:255',
+            'duration' => 'required|integer|min:1',
+            'poster' => 'nullable|image|max:2048', // Валидируем файл
         ]);
 
-        $session->update([
-            'cinema_hall_id' => $request->cinema_hall_id,
-            'start_time' => Carbon::createFromFormat('Y-m-d\TH:i', $request->start_time),
-            'end_time' => Carbon::createFromFormat('Y-m-d\TH:i', $request->end_time),
-        ]);
+        $movie->update($validated);
 
-        // Обновление привязки фильмов к сеансу
-        $session->movies()->sync($request->movie_ids);
+        if ($request->hasFile('poster')) {
+            // Удаляем старый постер если нужно
+            if ($request->has('delete_poster') && $movie->poster_url) {
+                unlink(public_path($movie->poster_url));
+                $movie->poster_url = null;
+            }
 
-        return redirect()->route('admin.sessions.index')->with('status', 'Сеанс успешно обновлен.');
+            // Загружаем новый постер
+            $posterPath = $request->file('poster')->move(public_path('client/i'), $request->file('poster')->getClientOriginalName());
+            $movie->poster_url = 'client/i/' . $request->file('poster')->getClientOriginalName();
+        }
+
+        $movie->save();
+
+        return redirect()->route('admin.movies.index')->with('success', 'Фильм успешно обновлен.');
     }
 
-    public function destroy(MovieSession $session)
+    public function destroy(Movie $movie)
     {
-        $session->movies()->detach(); // Отвязываем фильмы при удалении
-        $session->delete();
+        if ($movie->poster_url) {
+            unlink(public_path($movie->poster_url));
+        }
 
-        return redirect()->route('admin.sessions.index')->with('status', 'Сеанс успешно удален.');
+        $movie->delete();
+
+        return redirect()->route('admin.movies.index')->with('success', 'Фильм успешно удален.');
     }
 }

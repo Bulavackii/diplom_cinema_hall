@@ -9,8 +9,7 @@ class HomeController extends Controller
     /**
      * Create a new controller instance.
      *
-     * Этот конструктор позволяет применять middleware 'auth'
-     * ко всем методам контроллера, чтобы разрешить доступ только авторизованным пользователям.
+     * @return void
      */
     public function __construct()
     {
@@ -19,9 +18,6 @@ class HomeController extends Controller
 
     /**
      * Show the application dashboard.
-     *
-     * Отображает главную страницу панели пользователя.
-     * Метод возвращает представление 'home'.
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */

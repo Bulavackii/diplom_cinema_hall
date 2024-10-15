@@ -13,9 +13,9 @@
                 <div class="row mb-2">
                     <span class="mr-3"><strong>Ряд {{ $row }}:</strong></span>
                     @for ($seat = 1; $seat <= $seatsPerRow; $seat++)
-                        @php
-                            $isBooked = in_array($row . '-' . $seat, $bookedSeats);
-                        @endphp
+                    @php
+                    $isBooked = in_array($row . '-' . $seat, $bookedSeats->toArray());
+                @endphp
 
                         <label class="seat">
                             <input type="checkbox" name="seats[]" value="{{ $row }}-{{ $seat }}" {{ $isBooked ? 'disabled' : '' }}>
